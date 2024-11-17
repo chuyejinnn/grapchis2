@@ -1,110 +1,67 @@
-//
-//  main.cpp
-//  project02
-//
-//  Created by 추예진 on 11/17/24.
-//
+#include <GL/glut.h>
+#include "elastic_ball.h"
 
-#include <GL/glut.h> // GLUT, include glu.h and gl.h
+bool isWireframe = false; // 와이어프레임 모드 여부
 
-// Transformation variables
-GLfloat rotationX = 0.0f, rotationY = 0.0f;
-GLfloat translateX = 0.0f, translateY = 0.0f, translateZ = -5.0f;
-GLfloat scale = 1.0f;
-
-// Function to initialize OpenGL settings
 void initGL() {
-    glEnable(GL_DEPTH_TEST);  // Enable depth testing for z-culling
-    glEnable(GL_COLOR_MATERIAL); // Enable coloring
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Background color
+    glEnable(GL_DEPTH_TEST);              // 깊이 테스트 활성화
+    glClearColor(0.3f, 0.3f, 0.3f, 1.0f); // 밝은 회색 배경
 }
 
-// Function to handle drawing of the cube
-void display() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
-    glLoadIdentity(); // Reset transformations
-
-    // Apply transformations
-    glTranslatef(translateX, translateY, translateZ); // Translation
-    glScalef(scale, scale, scale);                   // Scaling
-    glRotatef(rotationX, 1.0f, 0.0f, 0.0f);          // Rotation around X-axis
-    glRotatef(rotationY, 0.0f, 1.0f, 0.0f);          // Rotation around Y-axis
-
-    // Draw a cube
-    glBegin(GL_QUADS);
-
-    // Front face
-    glColor3f(1.0f, 0.0f, 0.0f); // Red
-    glVertex3f(-1.0f, -1.0f,  1.0f);
-    glVertex3f( 1.0f, -1.0f,  1.0f);
-    glVertex3f( 1.0f,  1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f,  1.0f);
-
-    // Back face
-    glColor3f(0.0f, 1.0f, 0.0f); // Green
-    glVertex3f(-1.0f, -1.0f, -1.0f);
-    glVertex3f(-1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f, -1.0f, -1.0f);
-
-    // Left face
-    glColor3f(0.0f, 0.0f, 1.0f); // Blue
-    glVertex3f(-1.0f, -1.0f, -1.0f);
-    glVertex3f(-1.0f, -1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f, -1.0f);
-
-    // Right face
-    glColor3f(1.0f, 1.0f, 0.0f); // Yellow
-    glVertex3f( 1.0f, -1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f,  1.0f);
-    glVertex3f( 1.0f, -1.0f,  1.0f);
-
-    glEnd();
-
-    glutSwapBuffers(); // Swap front and back buffers
-}
-
-// Function to handle key press events
-void handleKeypress(unsigned char key, int x, int y) {
-    switch (key) {
-        case 'w': rotationX -= 5.0f; break; // Rotate up
-        case 's': rotationX += 5.0f; break; // Rotate down
-        case 'a': rotationY -= 5.0f; break; // Rotate left
-        case 'd': rotationY += 5.0f; break; // Rotate right
-        case 'q': scale -= 0.1f; break;    // Scale down
-        case 'e': scale += 0.1f; break;    // Scale up
-        case 'z': translateZ -= 0.5f; break; // Move closer
-        case 'x': translateZ += 0.5f; break; // Move farther
-        case 27: exit(0); // ESC key exits the program
-    }
-    glutPostRedisplay();
-}
-
-// Function to handle window resizing
-void reshape(GLsizei width, GLsizei height) {
-    if (height == 0) height = 1; // Prevent divide by zero
-    GLfloat aspect = (GLfloat)width / (GLfloat)height;
-
+void reshape(int width, int height) {
     glViewport(0, 0, width, height);
-
-    glMatrixMode(GL_PROJECTION); // Set the projection matrix
+    glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0f, aspect, 0.1f, 100.0f);
+    gluPerspective(45.0, (double)width / (double)height, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+}
 
-    glMatrixMode(GL_MODELVIEW); // Return to modelview matrix
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+
+    gluLookAt(0.0, 2.0, 6.0,
+              0.0, 1.0, 0.0,
+              0.0, 1.0, 0.0);
+
+    drawFloor();
+    drawBall();
+
+    glutSwapBuffers();
+}
+
+void timer(int value) {
+    updateBall();
+    glutPostRedisplay(); // 화면 갱신 요청
+    glutTimerFunc(16, timer, 0); // ~60 FPS
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'w': // 와이어프레임 모드 활성화
+            isWireframe = true;
+            break;
+        case 's': // 솔리드 모드 활성화
+            isWireframe = false;
+            break;
+        case 27: // ESC 키
+            exit(0); // 프로그램 종료
+    }
+    glutPostRedisplay(); // 키 입력 후 화면 갱신
 }
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("3D Cube Transformation");
+    glutCreateWindow("Elastic Ball Animation");
+
+    initGL();
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
-    glutKeyboardFunc(handleKeypress);
-    initGL();
+    glutKeyboardFunc(keyboard); // 키보드 입력 처리 함수 등록
+    glutTimerFunc(16, timer, 0);
+
     glutMainLoop();
     return 0;
 }
